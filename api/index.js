@@ -62,8 +62,8 @@ app.get('/web/device', async function (req, res) {
     console.log("Received GET /web/device");
     var devices = db.public.many("SELECT * FROM devices");
     if (devices.length === 0) {
-        console.error("No devices found.");
-        res.status(404).send("No devices found.");
+        console.error("ERROR: No devices found.");
+        res.status(404).send("ERROR: No devices found.");
         return;
     }
     var devicesHtml = devices.map(function (device) {
@@ -95,8 +95,8 @@ app.get('/web/device/:id', async function (req, res) {
 
     var device = db.public.many("SELECT * FROM devices WHERE device_id = '" + req.params.id + "'");
     if (device.length === 0) {
-        console.error(`No device found with id ${req.params.id}.`);
-        res.status(404).send("Device not found.");
+        console.error(`ERROR: No device found with id ${req.params.id}.`);
+        res.status(404).send("ERROR: Device not found.");
         return;
     }
     console.log(device);
@@ -114,8 +114,8 @@ app.get('/term/device/:id', async function (req, res) {
         "       key  " + blue + "  {{ key }}" + reset + "\n";
     var device = db.public.many("SELECT * FROM devices WHERE device_id = '" + req.params.id + "'");
     if (device.length === 0) {
-        console.error(`No device found with id ${req.params.id}.`);
-        res.status(404).send("Device not found.");
+        console.error(`ERROR: No device found with id ${req.params.id}.`);
+        res.status(404).send("ERROR: Device not found.");
         return;
     }
     console.log(device);
@@ -126,8 +126,8 @@ app.get('/measurement', async (req, res) => {
     console.log("Received GET /measurement");
     const measurements = await getMeasurements();
     if (measurements.length === 0) {
-        console.error("No measurements found.");
-        res.status(404).send("No measurements found.");
+        console.error("ERROR: No measurements found.");
+        res.status(404).send("ERROR: No measurements found.");
         return;
     }
     res.send(measurements);
@@ -137,8 +137,8 @@ app.get('/device', function (req, res) {
     console.log("Received GET /device");
     const devices = db.public.many("SELECT * FROM devices");
     if (devices.length === 0) {
-        console.error("No devices found.");
-        res.status(404).send("No devices found.");
+        console.error("ERROR: No devices found.");
+        res.status(404).send("ERROR: No devices found.");
         return;
     }
     res.send(devices);
