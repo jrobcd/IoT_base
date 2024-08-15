@@ -44,36 +44,46 @@ app.use(express.static('spa/static'));
 const PORT = 8080;
 
 app.post('/measurement', async function (req, res) {
+    console.log("Received POST /measurement");
     console.log("device id    : " + req.body.id + " key         : " + req.body.key + " temperature : " + req.body.t + " humidity    : " + req.body.h);    
     const insertedId = await insertMeasurement({ id: req.body.id, t: req.body.t, h: req.body.h });
     res.send("received measurement into " + insertedId);
 });
 
 app.post('/device', function (req, res) {
+    console.log("Received POST /device");
     console.log("device id    : " + req.body.id + " name        : " + req.body.n + " key         : " + req.body.k );
 
     db.public.none("INSERT INTO devices VALUES ('" + req.body.id + "', '" + req.body.n + "', '" + req.body.k + "')");
     res.send("received new device");
 });
 
-app.get('/web/device', function (req, res) {
-    var devices = db.public.many("SELECT * FROM devices").map(function (device) {
+app.get('/web/device', async function (req, res) {
+    console.log("Received GET /web/device");
+    var devices = db.public.many("SELECT * FROM devices");
+    if (devices.length === 0) {
+        console.error("No devices found.");
+        res.status(404).send("No devices found.");
+        return;
+    }
+    var devicesHtml = devices.map(function (device) {
         console.log(device);
         return '<tr><td><a href=/web/device/' + device.device_id + '>' + device.device_id + "</a>" +
             "</td><td>" + device.name + "</td><td>" + device.key + "</td></tr>";
-    });
+    }).join('');
     res.send("<html>" +
         "<head><title>Sensores</title></head>" +
         "<body>" +
         "<table border=\"1\">" +
         "<tr><th>id</th><th>name</th><th>key</th></tr>" +
-        devices +
+        devicesHtml +
         "</table>" +
         "</body>" +
         "</html>");
 });
 
-app.get('/web/device/:id', function (req, res) {
+app.get('/web/device/:id', async function (req, res) {
+    console.log(`Received GET /web/device/${req.params.id}`);
     var template = "<html>" +
         "<head><title>Sensor {{name}}</title></head>" +
         "<body>" +
@@ -84,11 +94,17 @@ app.get('/web/device/:id', function (req, res) {
         "</html>";
 
     var device = db.public.many("SELECT * FROM devices WHERE device_id = '" + req.params.id + "'");
+    if (device.length === 0) {
+        console.error(`No device found with id ${req.params.id}.`);
+        res.status(404).send("Device not found.");
+        return;
+    }
     console.log(device);
     res.send(render(template, { id: device[0].device_id, key: device[0].key, name: device[0].name }));
 });
 
-app.get('/term/device/:id', function (req, res) {
+app.get('/term/device/:id', async function (req, res) {
+    console.log(`Received GET /term/device/${req.params.id}`);
     var red = "\33[31m";
     var green = "\33[32m";
     var blue = "\33[33m";
@@ -97,20 +113,40 @@ app.get('/term/device/:id', function (req, res) {
         "       id   " + green + "       {{ id }} " + reset + "\n" +
         "       key  " + blue + "  {{ key }}" + reset + "\n";
     var device = db.public.many("SELECT * FROM devices WHERE device_id = '" + req.params.id + "'");
+    if (device.length === 0) {
+        console.error(`No device found with id ${req.params.id}.`);
+        res.status(404).send("Device not found.");
+        return;
+    }
     console.log(device);
     res.send(render(template, { id: device[0].device_id, key: device[0].key, name: device[0].name }));
 });
 
 app.get('/measurement', async (req, res) => {
-    res.send(await getMeasurements());
+    console.log("Received GET /measurement");
+    const measurements = await getMeasurements();
+    if (measurements.length === 0) {
+        console.error("No measurements found.");
+        res.status(404).send("No measurements found.");
+        return;
+    }
+    res.send(measurements);
 });
 
 app.get('/device', function (req, res) {
-    res.send(db.public.many("SELECT * FROM devices"));
+    console.log("Received GET /device");
+    const devices = db.public.many("SELECT * FROM devices");
+    if (devices.length === 0) {
+        console.error("No devices found.");
+        res.status(404).send("No devices found.");
+        return;
+    }
+    res.send(devices);
 });
 
 // DELETE endpoint to remove a device and its measurements
 app.delete('/device/:id', async (req, res) => {
+    console.log(`Received DELETE /device/${req.params.id}`);
     const deviceId = req.params.id;
     try {
         // Remove device from PostgreSQL
@@ -122,8 +158,6 @@ app.delete('/device/:id', async (req, res) => {
         console.error("Error deleting device:", error);
         res.status(500).send("Error deleting device.");
     }
-
-    console.log(`Received DELETE request for id `+ req.params.id)
 });
 
 startDatabase().then(async () => {
