@@ -45,17 +45,25 @@ const PORT = 8080;
 
 app.post('/measurement', async function (req, res) {
     console.log("Received POST /measurement");
-    console.log("device id    : " + req.body.id + " key         : " + req.body.key + " temperature : " + req.body.t + " humidity    : " + req.body.h);    
+    console.log("device id: " + req.body.id + " key: " + req.body.key + " temperature: " + req.body.t + " humidity: " + req.body.h);    
     const insertedId = await insertMeasurement({ id: req.body.id, t: req.body.t, h: req.body.h });
     res.send("received measurement into " + insertedId);
 });
 
 app.post('/device', function (req, res) {
     console.log("Received POST /device");
-    console.log("device id    : " + req.body.id + " name        : " + req.body.n + " key         : " + req.body.k );
+    console.log("device id: " + req.body.id + " name: " + req.body.n + " key: " + req.body.k );
 
     db.public.none("INSERT INTO devices VALUES ('" + req.body.id + "', '" + req.body.n + "', '" + req.body.k + "')");
     res.send("received new device");
+});
+
+app.put('/device', function (req, res) {
+    console.log("Received PUT /device");
+    console.log("device id: " + req.body.id + " name: " + req.body.n + " key: " + req.body.k );
+
+    db.public.none(`UPDATE devices SET name = '${req.body.n}', key = '${req.body.k}' WHERE device_id = '${req.body.id}'`);
+    res.send("Device updated");
 });
 
 app.get('/web/device', async function (req, res) {
@@ -144,15 +152,28 @@ app.get('/device', function (req, res) {
     res.send(devices);
 });
 
-// DELETE endpoint to remove a device and its measurements
 app.delete('/device/:id', async (req, res) => {
     console.log(`Received DELETE /device/${req.params.id}`);
     const deviceId = req.params.id;
+    
     try {
+        // Fetch all devices
+        const devices = db.public.many("SELECT * FROM devices");
+
+        // Check if the device ID exists
+        const deviceExists = devices.some(device => device.device_id === deviceId);
+
+        if (!deviceExists) {
+            console.error(`Error: Device with id ${deviceId} does not exist.`);
+            return res.status(404).send(`Error: Device with id ${deviceId} not found.`);
+        }
+
         // Remove device from PostgreSQL
         await db.public.none("DELETE FROM devices WHERE device_id = '" + deviceId + "'");
+        
         // Remove measurements from MongoDB
         await deleteMeasurements(deviceId);
+        
         res.send(`Device with id ${deviceId} and associated measurements deleted.`);
     } catch (error) {
         console.error("Error deleting device:", error);
